@@ -1,0 +1,53 @@
+#!/bin/bash
+
+for song in $*; do
+
+	# Start of the command to shift the song
+	cmd="abc2abc $song -b"
+
+	# Extract what we need out of the song
+	key=$(grep K: $song | cut -d: -f2);
+	meter=$(grep M: $song | cut -d: -f2)
+	notelen=$(grep L: $song | cut -d: -f2 | cut -d/ -f2)
+	nummeas=$(grep -o "|" $song | wc -l)
+
+	# Double the note values if there are fractional notes.
+	if grep -q "/2" $song; then 
+		let notelen*=2
+		cmd="$cmd -d"
+	fi
+
+	# Get the song as close to 8th note lengths as we can in one pass.
+	if (( notelen < 8 )); then
+		let notelen*=2
+		cmd="$cmd -d"
+	fi
+
+	case "$key" in 
+		f# | F# | gb | Gb )	trans=6;;
+		g  | G			  )	trans=5;;
+		g# | G# | ab | Ab ) trans=4;;
+		a  | A			  )	trans=3;;
+		a# | A# | bb | Bb ) trans=2;;
+		b  | B	| cb | Cb )	trans=1;;
+		c  | C			  )	trans=0;;		# no transposition if already in C
+		c# | C# | db | Db ) trans=-1;;
+		d  | D			  )	trans=-2;;
+		d# | D# | eb | Eb )	trans=-3;;
+		e  | E			  )	trans=-4;;
+		f  | F			  )	trans=-5;;
+		f# | F# | gb | Gb )	trans=-6;;
+		*)	
+			echo "confused by $key"	exit;;
+	esac
+	cmd="$cmd -t $trans"
+
+	meter1=${meter%/*}
+	meter2=${meter#*/}
+
+	outfile="sorted/meter-${meter1}-${meter2}-nl-${notelen}-nm-${nummeas}"
+#	echo "$cmd";
+	bash -c "$cmd >> $outfile"
+	echo "" >> $outfile			# make sure there's a blank line
+
+done
